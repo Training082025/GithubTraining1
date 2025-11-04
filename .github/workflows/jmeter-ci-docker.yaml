@@ -1,0 +1,40 @@
+# yaml
+name: jmeter-ci-docker
+
+on:
+  push:
+    paths:
+      - 'tests/**'
+  pull_request:
+    paths:
+      - 'tests/**'
+
+jobs:
+  jmeter-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run JMeter Docker container
+        run: |
+          docker run --rm \
+            -v ${GITHUB_WORKSPACE}:/workspace \
+            -w /workspace \
+            justb4/jmeter:5.6.3 \
+            -n -t tests/sample_test.jmx -l /workspace/results/results.jtl -Jthreads=5 -Jduration=60
+
+      - name: Generate HTML report (use local JMeter image to generate)
+        run: |
+          mkdir -p results
+          docker run --rm \
+            -v ${GITHUB_WORKSPACE}:/workspace \
+            -w /workspace \
+            justb4/jmeter:5.6.3 \
+            -g results/results.jtl -o results/html_report || true
+
+      - name: Upload results and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-results
+          path: results
